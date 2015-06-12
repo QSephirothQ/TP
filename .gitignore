@@ -1,16 +1,76 @@
-dist
-cabal-dev
-*.o
-*.hi
-*.chi
-*.chs.h
-*.dyn_o
-*.dyn_hi
-.virtualenv
-.hpc
-.hsenv
-.cabal-sandbox/
-cabal.sandbox.config
-*.prof
-*.aux
-*.hp
+import Data.Char
+
+esMin :: Char -> Bool
+esMin x = isLower x
+
+letANat :: Char -> Integer
+letANat x | (esMin x) = toInteger (length ['a'..x]) - 1
+	  | otherwise = undefined
+
+natALet :: Integer -> Char
+natALet x | (x >= 0) && (x <= 25) = last (take (fromInteger (x+1)) ['a'..'z'])
+	  | otherwise = undefined
+
+desplazar :: Integer -> Char -> Char
+desplazar n ' ' = ' '
+desplazar n l = natALet ((letANat l) + mod n 25)
+
+cantMinusc :: String -> Integer
+cantMinusc [] = 0
+cantMinusc (x:xs) | esMin x = 1 + cantMinusc xs
+		  | otherwise = cantMinusc xs
+
+contar :: Char -> String -> Integer
+contar l [] = 0
+contar l (x:xs) | x == l = 1 + contar l xs
+		| otherwise = contar l xs
+
+codificar :: Integer -> String -> String
+codificar n [] = []
+codificar n (x:xs) = (desplazar (mod n 26) x) : (codificar (mod n 26) xs)
+
+decodificar :: Integer -> String -> String
+decodificar n [] = []
+decodificar n x = (codificar (26 - (mod n 26)) x)
+
+contarporcentajes :: String -> String -> [Float]
+contarporcentajes x y | x == [] || y == [] = []
+		      | otherwise = ((100 * fromInteger (contar (head x) y))/ fromInteger (cantMinusc y)) : contarporcentajes (tail x) y
+
+frec :: String -> [Float]
+frec [] = take 26 (repeat 0)
+frec x = contarporcentajes ['a'..'z'] x
+
+tomarUltimos :: (Eq a) => Integer -> [a] -> [a]
+tomarUltimos n x | (n <= 0) || (x == []) = []
+	         | otherwise = tomarUltimos (n-1) (init x) ++ [last x]
+
+rotar :: (Eq a) => Integer -> [a] -> [a]
+rotar 0 y = y
+rotar x [] = []
+rotar x y = (tomarUltimos ((toInteger (length y)) - (mod x (toInteger (length y)))) y) ++ (take (fromInteger (mod x (toInteger (length y)))) y)
+
+chi2 :: [Float] -> [Float] -> Float
+chi2 [] [] = 0
+chi2 x y | length x /= length y = undefined
+	 | otherwise = (((head x - head y)^2)/(head y)) + chi2 (tail x) (tail y)
+
+aux :: String -> [Integer] -> [Float]
+aux x [] = []
+aux [] z = []
+aux x (z:zs) = (chi2 (rotar z f) y) : aux x zs
+	where
+	y = [12.52, 1.42, 4.67, 5.85, 13.67, 0.67, 1.01, 0.70, 6.24, 0.44, 0.01, 4.96, 3.15, 6.70, 8.67, 2.51, 0.88, 6.86, 7.97, 4.62, 3.92, 0.90, 0.02, 0.22, 0.90, 0.52]
+	f = frec x
+
+minimo :: [Float] -> Float
+minimo (x:xs) | length (x:xs) == 1 = x
+	      | (x < head xs) && (x < minimo xs) = x
+	      | otherwise = minimo xs
+
+posicion x [] = undefined
+posicion x (y:ys) | x == y = 0
+		  | otherwise = 1 + posicion x ys
+
+descifrar :: String -> String
+descifrar x = codificar (26 - (posicion (minimo (aux x [0..25])) (aux x [0..25]))) x
